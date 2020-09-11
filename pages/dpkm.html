@@ -59,7 +59,7 @@
         </div>
         <div class="row">
             <div class="col-lg-12">
-                <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addWG">Add New
+                <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#configureWGModal">Add New
                                                                                                            WireGuard Configuration</a>
             </div>
             <br/><br/>
@@ -101,7 +101,7 @@
         </div>
         <div class="row">
             <div class="col-lg-12">
-                <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addPeer">Add New
+                <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addPeerModal">Add New
                                                                                                            Peer Connection</a>
             </div>
             <br/><br/>
@@ -141,7 +141,74 @@
 
             </div>
         </div>
-        <!-- /.row -->
+        <div class="modal fade modal-lg" tabindex="-1" role="dialog" id="configureWGModal" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" id="configureWGModalCloseButton" data-dismiss="modal"
+                                aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                        <h4 class="modal-title" id="myModalLabel2">Add New WireGuard Configuration</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="switchSelect">Switch ID</label>
+                            <select id="switchId" name="switchSelect">
+                                <option selected="selected">Select Switch</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Cryptoperiod(s)</label>
+                            <input class="form-control" type="text" id="cryptoperiod" placeholder="Cryptoperiod">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-xs btn-default" data-dismiss="modal">Cancel</button>
+                        <button type="button" id="btnConfigureWG" class="btn btn-xs btn-primary" data-dismiss="modal">Configure</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade modal-lg" tabindex="-1" role="dialog" id="addPeerModal" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" id="addPeerModalCloseButton" data-dismiss="modal"
+                                aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                        <h4 class="modal-title" id="myModalLabel2">Add New Peer Connection</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="switchSource">Source Switch ID:</label>
+                            <select id="switchSource" onchange="updateField('switchSource')" name="switchSource">
+                                <option selected="selected">Select Switch</option>
+                            </select>
+                            <br />
+                            <label>IP Address Source:</label>
+                            <input class="form-control" type="text" value="" id="switchSourceIP" placeholder="Source IP" readonly />
+                        </div>
+                        <div class="form-group">
+                            <label for="switchTarget">Target Switch ID:</label>
+                            <br />
+                            <select id="switchTarget" onchange="updateField('switchTarget')" name="switchTarget">
+                                <option selected="selected">Select Switch</option>
+                            </select>
+                            <br />
+                            <label>IP Address Target:</label>
+                            <input class="form-control" type="text" value="" id="switchTargetIP" placeholder="Target IP" readonly />
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-xs btn-default" data-dismiss="modal">Cancel</button>
+                        <button type="button" id="btnAddPeer" class="btn btn-xs btn-primary" data-dismiss="modal">Add Peer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <!-- /#page-wrapper -->
@@ -187,7 +254,10 @@
     if (restport == null || restport == "") window.location.href = "login.html";
 
     $(document).ready(function () {
-        loadSwitches();
+        LoadSwitches();
+        GetWGSwitches();
+        GetWGSwitchesModal();
+        GetWGPeers();
         startRefresh();
     });
 
@@ -196,81 +266,399 @@
      * */
     function startRefresh() {
         setTimeout(startRefresh, 15000);
-
-        switchTable.ajax.reload();
+        GetWGSwitches();
+        GetWGSwitchesModal();
+        GetWGPeers();
     }
 
     /*
      * Gets all of the connected switches from the controller.
      * */
-    function loadSwitches() {
-        switchTable = $('#tableSwitches').DataTable({
-            responsive: true,
-            searching: false,
-            lengthChange: false,
-            scrollX: true,
-            paging: false,
-            order: [[0, 'asc']],
-            ajax: {
-                url: "http://" + ipaddress + ":" + restport + "/wm/core/controller/switches/json",
-                dataSrc: ''
-            },
-            columnDefs: [
-                {
-                    // The 'data' parameter refers to the data for the cell (defined by the
-                    // 'data' option, which defaults to the column being worked with, in
-                    // this case 'data: 0'.
-                    "render": function (data, type, row) {
-                        return "<a href='switchDetail.html?macAddress=" + data + "'>" + data + "</<a>";
-                    },
-                    "targets": 0
-                },
-                {
-                    "render": function (data, type, row) {
-                        var t = new Date(1970, 0, 1); // Epoch
-                        t.setSeconds(data / 1000);
-
-                        return t;
-                    },
-                    "targets": 2
-                }
-            ],
-            columns: [
-                {data: 'switchDPID'},
-                {data: 'inetAddress'},
-                {data: 'connectedSince'}
-            ]
-        });
-    }
-
-    $(document).ready(function () {
-
+    function LoadSwitches() {
         $.ajax({
-            url: "http://" + ipaddress + ":" + restport + "/wm/core/switch/all/role/json",
+            type    : "GET",
+            dataType: 'json',
+            url     : " http://" + ipaddress + ":" + restport + "/wm/core/controller/switches/json",
+
             success: function (data) {
-                var obj = data;
-                var html = " <table class='table table-bordered table-striped table-hover responsive-utilities'>" +
-                        "<thead><tr> <th>Switch MAC </th>  <th>Role</th></tr></thead><tbody>";
-
-                for (propName in obj) {
-                    if (obj.hasOwnProperty(propName)) {
-                        value = obj[propName];
-                    }
-                    html += "<tr><td>" + propName + "</td><td>" + value + "</td></tr>";
+                var result = data;
+                var selectIn = "";
+                for (var i=0;i<result.length;i++) {
+                    var selectSwitch = result[i].switchDPID;
+                    selectIn = '<option value='+ selectSwitch +'>'+ selectSwitch +'</option>';
+                    var optionValues =[];
+                    $('#switchId option').each(function(){
+                        if($.inArray(this.value, optionValues) >-1){
+                            $(this).remove()
+                        }else{
+                            optionValues.push(this.value);
+                        }
+                    });
+                    $('#switchId').append(selectIn);
                 }
-
-                html += "  </tbody></table>";
-
-                $("#rolTable").html("");
-                $("#rolTable").html(html);
-
             },
-            error: function (jqXHR, textStatus, errorThrown) {
+            error  : function (jqXHR, textStatus, errorThrown) {
                 alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
             }
         });
+    }
 
+    /*
+     * Checks the data in the configureWG modal form and calls the ConfigureWGSwitch function.
+     * */
+    $("#btnConfigureWG").click(function () {
+        var switchid = $("#switchId").val();
+        var cryptoperiod = $("#cryptoperiod").val();
+        if(switchid != "" && cryptoperiod != "") {
+            ConfigureWGSwitch(switchid, cryptoperiod);
+        } else {
+            new PNotify({
+                title: 'Enter a value !',
+                text : 'Please enter a valid value!',
+                type : 'warning',
+                hide : true
+            });
+        }
     });
+
+    /*
+     * Post method for sending a DPKM_SET_KEY message and setting the cryptoperiod on success.
+     * */
+    function ConfigureWGSwitch(switchid, cryptoperiod) {
+        var postData = "";
+        postData = '{ "switchid":' + "\"" + switchid + "\""
+                + ',"cryptoperiod": ' + "\"" + cryptoperiod + "\"" + '}';
+        $.ajax({
+            type    : "POST",
+            dataType: 'json',
+            url     : "http://" + ipaddress + ":" + restport + "/wm/dpkm/configure/json",
+                    data    : postData,
+                    success : function (data) {
+
+                        if (data["status"] == "DPKM_SET_KEY message sent to switch.") {
+                            new PNotify({
+                                title: 'DPKM_SET_KEY message sent to switch!',
+                                text : 'Status response will confirm success.',
+                                type : 'success',
+                                hide : true
+                            });
+
+                            GetWGSwitches();
+                        }
+                        else {
+
+                            new PNotify({
+                                title: 'Error Occured.',
+                                text : data["status"],
+                                type : 'error',
+                                hide : true
+                            });
+                        }
+
+                    },
+                    error   : function (jqXHR, textStatus, errorThrown) {
+                        alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+                    }
+                });
+    }
+
+    /*
+     * Gets all of the WireGuard Configured switches from the database.
+     * */
+     function GetWGSwitches() {
+
+         var url = "http://" + ipaddress + ":" + restport + "/wm/dpkm/retrieve/json";
+
+         $(document).ready(function () {
+
+             $('#tableWGSwitches').DataTable().destroy();
+
+             $('#tableWGSwitches').DataTable({
+                 responsive  : true,
+                 lengthChange: false,
+                 searching: false,
+                 scrollX: true,
+                 paging: false,
+                 ajax        : {
+                     url    : url,
+                     dataSrc: ''
+                 },
+                 "columnDefs": [
+                     {
+                         // The `data` parameter refers to the data for the cell (defined by the
+                         // `data` option, which defaults to the column being worked with, in
+                         // this case `data: 0`.
+                         "render" : function (data, type, row) {
+                             return "<a class='btn btn-xs btn-danger' onclick='DeleteSwitch(" + data + ")' >Delete</<a>";
+                         },
+                         "targets": 7
+                     }
+
+                 ],
+                 columns     : [
+                     {data: 'id'},
+                     {data: 'dpid'},
+                     {data: 'ipv4Addr'},
+                     {data: 'ipv4AddrWG'},
+                     {data: 'cryptoperiod'},
+                     {data: 'status'},
+                     {data: 'compromised'},
+                     {data: 'id'},
+                 ]
+             });
+
+         });
+
+     }
+
+     /*
+      *  Delete method for sending a DPKM_DELETE_KEY message on success to the specified switch.
+      * */
+      function DeleteSwitch(id) {
+          if (confirm("Switch will be unconfigured by deleting the key. To continue press 'OK'!")) {
+
+              $.ajax({
+                  type    : "DELETE",
+                  dataType: 'json',
+                  url     : "http://" + ipaddress + ":" + restport + "/wm/dpkm/delete/key/json",
+                  data    : '{ "id":' + "\"" + id + "\"" + '}',
+                  success : function (data) {
+
+                      new PNotify({
+                          title: 'DPKM_DELETE_KEY message sent to switch!',
+                          text : 'Status response will confirm success.',
+                          type : 'success',
+                          hide : true
+                      });
+
+                      GetWGSwitches();
+
+                  },
+                  error   : function (jqXHR, textStatus, errorThrown) {
+                      alert('Error: ' + " " + jqXHR.responseText + " \n Status: "
+                              + textStatus + " \n Error Thrown: " + errorThrown);
+                  }
+              });
+          }
+      }
+
+      /*
+       * Removes the selected source switch as an option in the target switch dropdown.
+       * Populates the target switch dropdown with the remaining options.
+       * */
+      var $switchesSource = $("select[name='switchSource']");
+      var $switchesTarget = $("select[name='switchTarget']");
+      $switchesSource.change(function() {
+          $switchesTarget.empty().append($switchesSource.find('option').clone());
+          var selectedSwitch = $(this).val();
+          if (selectedSwitch) {
+              $switchesTarget.find('option[value="' + selectedSwitch + '"]').remove();
+          }
+      });
+
+      /*
+       * Updates the IP address field based on the selected switch id.
+       * */
+      function updateField(field) {
+          $.ajax({
+              type    : "GET",
+              dataType: 'json',
+              url     : " http://" + ipaddress + ":" + restport + "/wm/dpkm/retrieve/json",
+
+              success: function (data) {
+                  var result = data;
+                  var selectIn = "";
+                  var id = field + 'IP';
+                  for (var i=0;i<result.length;i++) {
+                      var selectSwitchId = result[i].dpid;
+                      var selectSwitchIP = result[i].ipv4Addr;
+                      if(document.getElementById(field).value == selectSwitchId) {
+                          document.getElementById(id).value = selectSwitchIP;
+                      }
+                  }
+              },
+              error  : function (jqXHR, textStatus, errorThrown) {
+                  alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+              }
+          });
+      }
+
+      /*
+       * Gets all configured switches from the database populating drop-downs.
+       * */
+      function GetWGSwitchesModal() {
+          $.ajax({
+              type    : "GET",
+              dataType: 'json',
+              url     : " http://" + ipaddress + ":" + restport + "/wm/dpkm/retrieve/json",
+
+              success: function (data) {
+                  var result = data;
+                  var selectIn = "";
+                  for (var i=0;i<result.length;i++) {
+                      var selectSwitch = result[i].dpid;
+                      selectIn = '<option value='+ selectSwitch +'>'+ selectSwitch +'</option>';
+                      var optionsSource =[];
+                      $('#switchSource').append(selectIn);
+                      $('#switchSource option').each(function(){
+                          if($.inArray(this.value, optionsSource) >-1){
+                              $(this).remove()
+                          }else{
+                              optionsSource.push(this.value);
+                          }
+                      });
+
+                  }
+              },
+              error  : function (jqXHR, textStatus, errorThrown) {
+                  alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+              }
+          });
+      }
+
+      /*
+       * Checks the data in the addPeer modal form and calls the AddPeer function.
+       * */
+      $("#btnAddPeer").click(function () {
+          var switchIdSource = $("#switchSource").val();
+          var ipv4Source = $("#switchSourceIP").val();
+          var switchIdTarget = $("#switchTarget").val();
+          var ipv4Target = $("#switchTargetIP").val();
+          if(switchIdSource != "" && ipv4Source != "" && switchIdTarget != "" && ipv4Target != "") {
+              AddPeer(switchIdSource, ipv4Source, switchIdTarget, ipv4Target);
+          } else {
+              new PNotify({
+                  title: 'Enter a value !',
+                  text : 'Please enter a valid value!',
+                  type : 'warning',
+                  hide : true
+              });
+          }
+      });
+
+      /*
+       * Post method for sending a DPKM_ADD_PEER message to add a new peer connection.
+       * */
+      function AddPeer(switchIdSource, ipv4Source, switchIdTarget, ipv4Target) {
+          var postData = "";
+          postData = '{ "switchIdSource":' + "\"" + switchIdSource + "\""
+                  + ',"ipv4Source" :' + "\"" + ipv4Source + "\""
+                  + ',"switchIdTarget" :' + "\"" + switchIdTarget + "\""
+                  + ',"ipv4Target": ' + "\"" + ipv4Target + "\"" + '}';
+          $.ajax({
+              type    : "POST",
+              dataType: 'json',
+              url     : "http://" + ipaddress + ":" + restport + "/wm/dpkm/add/peer/json",
+                      data    : postData,
+                      success : function (data) {
+
+                          if (data["status"] == "DPKM_ADD_PEER message sent to switch.") {
+                              new PNotify({
+                                  title: 'DPKM_ADD_PEER message sent to switch!',
+                                  text : 'Status response will confirm success.',
+                                  type : 'success',
+                                  hide : true
+                              });
+
+                              GetWGPeers();
+                          }
+                          else {
+
+                              new PNotify({
+                                  title: 'Error Occured.',
+                                  text : data["status"],
+                                  type : 'error',
+                                  hide : true
+                              });
+                          }
+
+                      },
+                      error   : function (jqXHR, textStatus, errorThrown) {
+                          alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+                      }
+                  });
+      }
+
+     /*
+      * Gets all of the WireGuard Peer connections from the database.
+      * */
+      function GetWGPeers() {
+
+          var url = "http://" + ipaddress + ":" + restport + "/wm/dpkm/retrieve/peers/json";
+
+          $(document).ready(function () {
+
+              $('#tableWGPeers').DataTable().destroy();
+
+              $('#tableWGPeers').DataTable({
+                  responsive  : true,
+                  lengthChange: false,
+                  searching: false,
+                  scrollX: true,
+                  paging: false,
+                  ajax        : {
+                      url    : url,
+                      dataSrc: ''
+                  },
+                  "columnDefs": [
+                      {
+                          // The `data` parameter refers to the data for the cell (defined by the
+                          // `data` option, which defaults to the column being worked with, in
+                          // this case `data: 0`.
+                          "render" : function (data, type, row) {
+                              return "<a class='btn btn-xs btn-danger' onclick='DeletePeer(" + data + ")' >Delete</<a>";
+                          },
+                          "targets": 8
+                      }
+
+                  ],
+                  columns     : [
+                      {data: 'cid'},
+                      {data: 'dpidA'},
+                      {data: 'ipv4AddrA'},
+                      {data: 'ipv4AddrWGA'},
+                      {data: 'dpidB'},
+                      {data: 'ipv4AddrB'},
+                      {data: 'ipv4AddrWGB'},
+                      {data: 'status'},
+                      {data: 'cid'},
+                  ]
+              });
+
+          });
+
+      }
+
+      /*
+       *  Delete method for sending a DPKM_DELETE_PEER message on success to the specified switch.
+       * */
+       function DeletePeer(cid) {
+           if (confirm("The chosen peer connection will be deleted. To continue press 'OK'!")) {
+
+               $.ajax({
+                   type    : "DELETE",
+                   dataType: 'json',
+                   url     : "http://" + ipaddress + ":" + restport + "/wm/dpkm/delete/peer/json",
+                   data    : '{ "cid":' + "\"" + cid + "\"" + '}',
+                   success : function (data) {
+
+                       new PNotify({
+                           title: 'DPKM_DELETE_PEER message sent to switch!',
+                           text : 'Status response will confirm success.',
+                           type : 'success',
+                           hide : true
+                       });
+
+                       GetWGPeers();
+
+                   },
+                   error   : function (jqXHR, textStatus, errorThrown) {
+                       alert('Error: ' + " " + jqXHR.responseText + " \n Status: "
+                               + textStatus + " \n Error Thrown: " + errorThrown);
+                   }
+               });
+           }
+       }
 
 </script>
 </body>
