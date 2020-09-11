@@ -5,6 +5,7 @@ document.getElementById("navMenu").innerHTML =
     '<ul class="nav" id="side-menu">'+
     '<li><a href="index.html"><i class="fa fa-home fa-fw"></i> Controller (Home) </a></li>'+
     '<li><a href="switches.html"><i class="fa fa-exchange"></i> Switches</a></li>'+
+    '<li><a href="dpkm.html"><i class="fa fa-shield"></i> DPKM Encryption</a></li>'+
     '<li><a href="hosts.html"><i class="fa fa-desktop fa-fw"></i> Hosts</a></li>'+
     '<li><a href="links.html"><i class="fa fa-expand fa-fw"></i> Links</a></li>'+
     //'<li><a href="routes.html"><i class="fa fa-link fa-fw"></i> Routes</a></li>'+
