@@ -301,7 +301,7 @@
      * Refreshes all of the values on the page every fifteen seconds.
      * */
     function startRefresh() {
-        setTimeout(startRefresh, 15000);
+        setTimeout(startRefresh, 10000);
         GetWGSwitches();
         GetWGSwitchesModal();
         GetWGPeers();
@@ -427,13 +427,17 @@
                          "render" : function (data, type, row) {
                              var now = new Date($.now());
                              var t = new Date(row['since']);
+                             var timeout = row['id'] * 500;
                              t = new Date(t.getTime() + (data * 1000));
                              // Calculate integer diffence in seconds.
                              var diff = Math.round((t.getTime() - now.getTime()) / 1000);
                              if (diff <= 0 && !cryptoLog(row['dpid'])) {
-                                 Rekey(row['dpid'], row['cryptoperiod']);
+                                 setTimeout(function(){Rekey(row['dpid'], row['cryptoperiod']);}, timeout);
                                  return "Expired";
-                             } else {
+                             }
+                             else if (diff <= 0) {
+                                 return "Expired";
+                             }else {
                                  return diff;
                              }
                          },
@@ -516,11 +520,12 @@
 
                          if (data["status"] == "DPKM_SET_KEY message sent to switch.") {
                              new PNotify({
-                                 title: 'SWITCH' + " " + switchid + "has been rekeyed." ,
+                                 title: 'SWITCH' + " " + switchid + " has been rekeyed." ,
                                  text : 'Status response will confirm success.',
                                  type : 'success',
                                  hide : true
                              });
+                             switches.pop(switchid);
                          }
                          else {
 
