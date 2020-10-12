@@ -58,9 +58,12 @@
             <!-- /.col-lg-12 -->
         </div>
         <div class="row">
-            <div class="col-lg-12">
+            <div class="col-lg-9">
                 <a href="#" class="btn btn-sm btn-primary" data-toggle="modal" data-target="#configureWGModal">Add New
                                                                                                            WireGuard Configuration</a>
+            </div>
+            <div class="col-lg-3">
+                <a href="#" class="btn btn-sm btn-danger" data-toggle="modal" data-target="#compromiseSimulatorModal">Compromise Simulator</a>
             </div>
             <br/><br/>
         </div>
@@ -245,6 +248,68 @@
                 </div>
             </div>
         </div>
+        <div class="modal fade modal-lg" tabindex="-1" role="dialog" id="compromiseSimulatorModal" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" id="compromiseSimulatorModalCloseButton" data-dismiss="modal"
+                                aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                        <h4 class="modal-title" id="myModalLabel2">DPKM Third Party Compromise Detection Simulator</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <p>This feature simulates a third-party compromise detection tool
+                                such as an intrusion detection system with the purpose of
+                                testing the Data Plane Key Management protocols response to
+                                node compromise. <br />
+                                Simply enter an id show by the table and click the button to
+                                compromise the selected switch and begin the revocation procedure. <br />
+                                In practise third-party software would tell the controller
+                                directly to handle the compromise as quickly as possible. <br />
+                            </p>
+                        </div>
+                        <div class="form-group">
+                            <label>ID</label>
+                            <input class="form-control" type="text" id="compSwitch" placeholder="Enter ID">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">Cancel</button>
+                        <button type="button" id="btnCompromiseNode" class="btn btn-sm btn-danger" data-dismiss="modal">Compromise</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade modal-lg" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" id="handleCompromiseModal" aria-hidden="true">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="myModalLabel2">ACTION NEEDED SECURITY THREAT DETECTED!</h4>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Following switch has been compromised:</label>
+                            <input class="form-control" type="text" value="" id="compSwitchId" readonly />
+
+                            <label>What action should be taken?</label>
+                            <div class="radio">
+                                <label>
+                                    <input type="radio" id="unConf" name="checkComp" checked="checked"/> Full termination (Unconfigure Switch)
+                                </label>
+                                <label>
+                                    <input type="radio" id="reConf" name="checkComp"> Reconfigure (Generate new keys)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" id="btnHandleCompromise" class="btn btn-xs btn-primary" data-dismiss="modal">OK</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <!-- /#page-wrapper -->
@@ -424,6 +489,17 @@
                          // The `data` parameter refers to the data for the cell (defined by the
                          // `data` option, which defaults to the column being worked with, in
                          // this case `data: 0`.
+                         "render" : function (data, type, row) {
+                             if (row['compromised']) {
+                                 HandleCompromiseModal(row['dpid']);
+                                 return data;
+                             } else {
+                                 return data;
+                             }
+                         },
+                         "targets": 5
+                     },
+                     {
                          "render" : function (data, type, row) {
                              var now = new Date($.now());
                              var t = new Date(row['since']);
@@ -929,6 +1005,147 @@
                  }
              });
          }
+
+         /*
+          * Checks the data in the simulate compromise modal form and calls the
+          * CompromiseNode function.
+          * */
+         $("#btnCompromiseNode").click(function () {
+             var id = $("#compSwitch").val();
+             if(id != "") {
+                 CompromiseNode(id);
+             } else {
+                 new PNotify({
+                     title: 'Enter a value !',
+                     text : 'Please enter a valid value!',
+                     type : 'warning',
+                     hide : true
+                 });
+             }
+         });
+
+         /*
+          *  Compromise node method for simulating compromise of a switch.
+          *  Used to initialise the conditions for the revocation procedure.
+          * */
+          function CompromiseNode(id) {
+              $.ajax({
+                  type    : "POST",
+                  dataType: 'json',
+                  url     : "http://" + ipaddress + ":" + restport + "/wm/dpkm/compromise/json",
+                  data    : '{ "id":' + "\"" + id + "\"" + '}',
+                  success : function (data) {
+
+                      if (data["status"] == "Node has been compromised.") {
+                          new PNotify({
+                              title: 'Switch with id ' + id + ' has been compromised.',
+                              text : 'Simulation of revocation procedure has started.',
+                              type : 'success',
+                              hide : true
+                          });
+
+                          GetWGSwitches();
+                      }
+                      else {
+
+                          new PNotify({
+                              title: 'Error Occured.',
+                              text : data["status"],
+                              type : 'error',
+                              hide : true
+                          });
+                      }
+
+                  },
+                  error   : function (jqXHR, textStatus, errorThrown) {
+                      alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+                  }
+              });
+          }
+
+          /*
+           * Displays the handle compromise modal for the administrator to take
+           * action. Modal fixed on display until some action is taken.
+           * */
+          function HandleCompromiseModal(dpid) {
+              $('#compSwitchId').val(dpid);
+              $('#handleCompromiseModal').modal('show');
+          }
+
+          /*
+           * Checks the data in the handle compromise modal form and calls the
+           * HandleCompromise function.
+           * */
+          $("#btnHandleCompromise").click(function () {
+              var dpid = $("#compSwitchId").val();
+              var revType = "";
+              if($("#reConf").is(':checked')) revType = "reConf";
+              else revType = "unConf";
+
+              if(dpid != "" && revType != "") {
+                  HandleCompromise(dpid, revType);
+              } else {
+                  new PNotify({
+                      title: 'Enter a value !',
+                      text : 'Please enter a valid value!',
+                      type : 'warning',
+                      hide : true
+                  });
+              }
+          });
+
+          /*
+           * Carries out the revocation procedure based on the administrators
+           * chosen action. Either completely unconfigures the node by removing
+           * from DPKM system or reconfigures by generating new keys.
+           * */
+          function HandleCompromise(dpid, revType) {
+              var postData = "";
+              postData = '{ "switchid":' + "\"" + dpid + "\""
+                      + ',"revType": ' + "\"" + revType + "\"" + '}';
+              $.ajax({
+                  type    : "POST",
+                  dataType: 'json',
+                  url     : "http://" + ipaddress + ":" + restport + "/wm/dpkm/revoke/json",
+                  data    : postData,
+                  success : function (data) {
+
+                      if (data["status"] == "Node has been fully terminated.") {
+                          new PNotify({
+                              title: 'Security threat has been neutralised!',
+                              text : 'Compromised node has been unconfigured and all associated keys/connections have been deleted.',
+                              type : 'success',
+                              hide : true
+                          });
+
+                          GetWGSwitches();
+                      }
+                      else if (data["status"] == "Node has been reconfigured.") {
+                          new PNotify({
+                              title: 'Security threat has been neutralised!',
+                              text : 'Compromised node has been reconfigured with new WireGuard keys. Connections must be rebuilt.',
+                              type : 'success',
+                              hide : true
+                          });
+
+                          GetWGSwitches();
+                      }
+                      else {
+
+                          new PNotify({
+                              title: 'Error Occured.',
+                              text : data["status"],
+                              type : 'error',
+                              hide : true
+                          });
+                      }
+
+                  },
+                  error   : function (jqXHR, textStatus, errorThrown) {
+                      alert('Error: ' + " " + jqXHR.responseText + " \n Status: " + textStatus + " \n Error Thrown: " + errorThrown);
+                  }
+              });
+          }
 </script>
 </body>
 </html>
