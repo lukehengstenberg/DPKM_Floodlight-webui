@@ -1,55 +1,11 @@
-#Email cbarrin@g.clemson.edu for bug reports and help.
+Data Plane Key Management (DPKM)
+====================================
+This GitHub Repository contains extensions to the Floodlight Web UI for integration of the Data Plane Key Management scheme DPKM.
+DPKM enables automated configuration of WireGuard network tunnels between nodes in the data plane. Floodlight Web UI has been extended with a new page located in [/pages/dpkm.html](https://github.com/lukehengstenberg/DPKM_Floodlight-webui/blob/master/pages/dpkm.html).
+Eight procedures have been added for Configuring WireGuard, Unconfiguring WireGuard, Adding Peers, Deleting Peers, Starting Encrypted Communication, Ending Encrypted Communication, Rekeying, and Compromise/Key Revocation. New REST APIs were defined in Floodlight for initiating the procedures from the interface.
+OpenFlow has been extended with Loxigen to include six new messages, a new OXM, and fifteen new error messages. <br />
+DPKM relies on the modified Floodlight controller set-up from [Here](https://github.com/lukehengstenberg/DPKM_Floodlight) and OVS nodes set-up from [Here](https://github.com/lukehengstenberg/DPKM_OVS). The UI is packaged with the controller so does not need to be pulled directly.<br /><br /> 
 
-# floodlight-WebUI
-SDN Controller  WebUI
-
-WebUI is a new user interface for floodlight controller developed by using HTML and JQuery. It can be deployed on (Windows) IIS or Apache (Linux) server..
-
-# Any  Dependencies: No.
-
-# Deployment and Install
-         Windows :
-            IIS 5.0+
-         Linux and MAC OS :
-            Apache web server or  equivalent one.
-    
-Not: It can be deployed on any operating system as a web application. Because it is just a html based application. Only thing that you need is a remote controller ip address.
- 
-
-NOTE: Before starting to run you have to change the controller ip address in all html pages manually for now. I am developing a start (like login page) page takes the ip address on startup.
-
-
-Example for main page (index.html):  
-
- //Controller status
- 
-        $.ajax({
-            url: "http://controller ip address/wm/core/health/json", ....
-
-Web UI Modules : 
-
-        Controller Status,
-        Controller Role Management,
-        Controller Memory Consume,
-        Loaded  Controller Modules,
-        Switches,
-        Switch Role Management,
-        Switch Details,
-        Static Flow Pusher,
-        Hosts,
-        Switch Statistics,
-        Topology View,
-        Firewall Management,
-        Access Control Lists Module,
-        Statistics Management
-
-Screen Shots 
-![Alt text](/images/0.jpg?raw=true "Optional Title")
-![Alt text](/images/1.jpg?raw=true "Optional Title")
-![Alt text](/images/2.jpg?raw=true "Optional Title")
-![Alt text](/images/3.jpg?raw=true "Optional Title")
-![Alt text](/images/4.jpg?raw=true "Optional Title")
-![Alt text](/images/5.jpg?raw=true "Optional Title")
-![Alt text](/images/6.jpg?raw=true "Optional Title")
-![Alt text](/images/7.jpg?raw=true "Optional Title")
-![Alt text](/images/8.jpg?raw=true "Optional Title")
+DPKM was completed as part of an MSc project at Swansea University and is still a work in progress.
+Extensive testing with multiple nodes is needed since the project was built and tested for a single controller with two nodes. UI design was kept basic and will be enhanced with additional styling and formatting. Login access control mechanisms are also needed before deployment on a public network. The project would benefit from a professionals expertise to clean-up code and integrate better native support in Floodlight and OVS.<br /><br />
+For any questions or queries, contact the developer at this [email](mailto:lukehengstenberg@gmail.com)!
